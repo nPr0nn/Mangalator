@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manga Translator 漫画</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">漫</div>
+    <div>
+      <h1>Manga Translator</h1>
+      <p>OCR + inpainting + tradução JP → PT-BR</p>
+    </div>
+    <div class="server-pill" id="server-pill">⬤ &nbsp;conectando…</div>
+  </header>
+
+  <!-- stepper -->
+  <div class="stepper">
+    <div class="step-item active" id="si-1"><div class="step-num">1</div><div class="step-label">Upload</div></div>
+    <div class="step-line"></div>
+    <div class="step-item" id="si-2"><div class="step-num">2</div><div class="step-label">Revisar balões</div></div>
+    <div class="step-line"></div>
+    <div class="step-item" id="si-3"><div class="step-num">3</div><div class="step-label">Inpainting</div></div>
+    <div class="step-line"></div>
+    <div class="step-item" id="si-4"><div class="step-num">4</div><div class="step-label">Resultado</div></div>
+  </div>
+
+  <div id="error-box" class="error-box"></div>
+  <div id="progress-bar-wrap">
+    <div class="pbar"><div class="pbar-fill" id="pbar-fill"></div></div>
+    <div class="pbar-label" id="pbar-label">Processando...</div>
+  </div>
+
+  <!-- ── Step 1: upload ── -->
+  <div id="step-upload">
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp" />
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5 5 5M12 5v11"/>
+        </svg>
+      </div>
+      <h2>Arraste uma página de mangá aqui</h2>
+      <p>PNG, JPG ou WEBP</p>
+    </div>
+  </div>
+
+  <!-- ── Step 2: review ── -->
+  <div id="step-review">
+    <div class="review-layout">
+
+      <div>
+        <div class="canvas-wrap">
+          <canvas id="review-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="hint">
+          <strong>Revisão de balões</strong><br>
+          Cada balão tem duas caixas:<br>
+          <span class="legend-dot" style="background:#E24B4A"></span> <strong>Vermelha</strong> = balão completo (máscara de inpainting)<br>
+          <span class="legend-dot" style="background:#378ADD"></span> <strong>Azul</strong> = área do texto (OCR + renderização)<br><br>
+          Clique para selecionar · arraste para mover · alças para redimensionar.<br>
+          Clique em área vazia e arraste para criar novo balão.<br>
+          <strong>Delete</strong> remove o balão selecionado.
+        </div>
+
+        <!-- which box to edit -->
+        <div class="box-mode-toggle" id="box-mode-toggle">
+          <button class="toggle-btn active" id="btn-mode-bubble" data-mode="bubble">
+            <span class="dot" style="background:#E24B4A"></span> Balão
+          </button>
+          <button class="toggle-btn" id="btn-mode-text" data-mode="text">
+            <span class="dot" style="background:#378ADD"></span> Texto
+          </button>
+        </div>
+
+        <div class="sidebar-actions">
+          <button class="btn-primary" id="btn-do-inpaint">Inpainting →</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span>Balões detectados</span>
+            <span class="badge badge-blue" id="bub-count">0</span>
+          </div>
+          <div class="bubble-list-wrap" id="bubble-list"></div>
+        </div>
+
+        <button class="btn-outline" id="btn-back-upload" style="font-size:12px;color:var(--muted)">← Trocar imagem</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 3: inpaint preview ── -->
+  <div id="step-inpaint">
+    <div class="review-layout">
+
+      <div>
+        <div class="hint" style="margin-bottom:10px">
+          Página limpa após inpainting. As caixas azuis mostram onde o texto traduzido será renderizado.
+          Ajuste-as se necessário antes de traduzir.
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="inpaint-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-actions" style="flex-direction:column;gap:8px">
+          <div class="font-select-wrap">
+            <label class="font-select-label" for="font-select">Fonte</label>
+            <select id="font-select" class="font-select">
+              <option value="">Padrão</option>
+            </select>
+          </div>
+          <button class="btn-primary" id="btn-do-translate">Traduzir →</button>
+          <button class="btn-outline" id="btn-back-review">← Voltar para revisão</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span>Caixas de texto</span>
+            <span class="badge badge-blue" id="inp-bub-count">0</span>
+          </div>
+          <div class="bubble-list-wrap" id="inpaint-bubble-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 4: results ── -->
+  <div id="step-results">
+    <div class="results-header">
+      <h2>Resultado</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn-outline" id="btn-copy-texts">Copiar textos</button>
+        <button class="btn-outline" id="btn-download">Baixar traduzido</button>
+        <button class="btn-outline" id="btn-new">Nova imagem</button>
+      </div>
+    </div>
+    <div class="panels-grid">
+      <div class="card">
+        <div class="card-head"><span>Original</span><span class="badge badge-jp">日本語</span></div>
+        <div class="panel-body"><img id="img-original" src="" alt="original" /></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span>Traduzido</span><span class="badge badge-pt">PT-BR</span></div>
+        <div class="panel-body"><img id="img-translated" src="" alt="traduzido" /></div>
+      </div>
+    </div>
+    <div class="bubbles-card">
+      <div class="card-head">
+        <span>Balões traduzidos</span>
+        <span class="badge badge-blue" id="res-count">0</span>
+      </div>
+      <div id="res-list"></div>
+    </div>
+  </div>
+
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
